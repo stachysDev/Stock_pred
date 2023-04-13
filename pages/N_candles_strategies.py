@@ -27,7 +27,7 @@ def get_symbols_group_infos(symbol_group_selected, start_date, end_date, time_in
             if len(data) != 0:
                 st.write(data.tail(4))
                 t = list(data.tail(3))
-                if t[2] > t[1] > t[0]:
+                if t[2] > t[1]:
                     st.subheader("True")
                 else:
                     st.subheader("False")
