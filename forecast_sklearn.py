@@ -4,13 +4,17 @@ import numpy as np
 import pandas as pd
 from datetime import datetime, timedelta
 import plotly.express as px
-from sktime.forecasting.base import ForecastingHorizon
-from sktime.forecasting.naive import NaiveForecaster
 
 
+from sklearn.linear_model import LinearRegression
+from sklearn.linear_model import Lasso
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.metrics import mean_squared_error
+from sklearn.preprocessing import StandardScaler
+from sklearn.pipeline import make_pipeline
 
 st.set_page_config(
-    page_title="Sktime forecast",
+    page_title="Sklearn forecast",
     layout="wide"
 )
 
@@ -48,6 +52,13 @@ def show_close_open_graph(df):
             title='Open and Close graphs')
         fig.update_xaxes()
         st.plotly_chart(fig)
+
+def mape(y_true, y_pred):
+    ape = np.mean(np.abs((y_true - y_pred) / y_true)) * 100
+    return ape
+
+def wmape(y_true, y_pred):
+    return np.sum(np.abs(y_true - y_pred)) / np.sum(np.abs(y_true))
 
 
 stock_col, start_col, end_date_col, interval_col = st.columns(4)
@@ -140,55 +151,56 @@ if len(stock_data != 0):
     df_train = pd.DataFrame()
     st.write("Frequency is ", forecast_freq)
 
+
+
     if "Date" in stock_data_cols:
-        last_date = stock_data.Date[len_stock_data - 1]
+        stock_data = stock_data.rename(columns={"Date": "ds", "Close": "y", "index": "unique_id"})
+        last_date = stock_data.ds[len_stock_data - 1]
         some_days_ago_2 = last_date - timedelta(substract_days)
         st.write("Last date is ", type(last_date), last_date)
-        Y_train_df = stock_data[stock_data.Date <= some_days_ago_2]
-        Y_test_df = stock_data[stock_data.Date > some_days_ago_2]
+
+        Y_train_df = stock_data[stock_data.ds <= some_days_ago_2].copy()
+        Y_test_df = stock_data[stock_data.ds > some_days_ago_2].copy()
+
+        #
+        Y_train_df['next_y'] = Y_train_df['y'].shift(-1)
+        Y_test_df['next_y'] = Y_test_df['y'].shift(-1)
+        Y_train_df.dropna()
 
         st.subheader("Date in df")
         st.write(Y_train_df.tail())
-        period_ind = pd.PeriodIndex(Y_test_df.Date).astype('period[D]')
-        st.write(type(period_ind))
-        st.write(period_ind)
+        # period_ind = pd.PeriodIndex(Y_test_df.Date).astype('period[D]')
 
-        fh = ForecastingHorizon(period_ind, is_relative=True, freq=forecast_freq)
+        y_true = Y_train_df['next_y']
+        y_pred = Y_train_df['y']
 
-        cutoff = pd.Period(some_days_ago_2, freq= forecast_freq)
-        fh.to_absolute(cutoff)
-        st.write("cutoff", cutoff)
-        st.write("FH", fh)
+        st.write("mape ", mape(y_true, y_pred))
+        st.write("wmape ", wmape(y_true, y_pred))
 
-        y = Y_train_df['Close']
+        m = RandomForestRegressor(n_estimators=100, random_state=0, n_jobs=2)
+        m.fit(Y_test_df['ds'], Y_train_df['y'])
 
-        st.write(y)
+        st.write(m)
 
-        forecaster = NaiveForecaster(strategy="last")
-        forecaster.fit(y, fh=fh)
-        y_pred = forecaster.predict(fh)
-        st.write(type(y_pred))
+
+
 
 
 
     elif "Datetime" in stock_data_cols:
-        last_date = stock_data.Datetime[len_stock_data - 1]
+        stock_data = stock_data.rename(columns={"Datetime": "ds", "Close": "y", "index": "unique_id"})
+        last_date = stock_data.ds[len_stock_data - 1]
         st.write("Last date is ", last_date, "And its type is", type(last_date))
         st.subheader(last_date > some_days_ago)
         some_days_ago = last_date - timedelta(substract_days)
-        Y_train_df = stock_data[stock_data.Datetime <= some_days_ago]
-        Y_test_df = stock_data[stock_data.Datetime > some_days_ago]
+
+        Y_train_df = stock_data[stock_data.ds <= some_days_ago].copy()
+        Y_test_df = stock_data[stock_data.ds > some_days_ago].copy()
 
         st.subheader("Datetime in df")
-        st.write(Y_train_df.head())
-        st.write(type(Y_train_df.Datetime))
+        st.write(Y_train_df.tail())
 
-        period_ind = pd.PeriodIndex(Y_test_df.Datetime, freq=forecast_freq)
-        st.write(type(period_ind))
-        st.write(period_ind)
 
-        fh = ForecastingHorizon(period_ind, is_relative=False, freq=forecast_freq)
-        st.write(fh)
 
     Y_train_len = len(Y_train_df)
     Y_test_len = len(Y_test_df)
