@@ -29,7 +29,7 @@ def get_symbols_group_infos(symbol_group_selected, start_date, end_date, time_in
                 closes = tail_3['Close']
                 st.write(data.tail(3))
                 t = list(closes)
-                if t[2] > t[1]:
+                if t[2] > t[1] > t[0]:
                     st.subheader("True")
                 else:
                     st.subheader("False")
