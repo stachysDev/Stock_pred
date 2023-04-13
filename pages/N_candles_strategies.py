@@ -25,7 +25,7 @@ def get_symbols_group_infos(symbol_group_selected, start_date, end_date, time_in
             st.subheader(txt)
             data = myf.get_stock_data(ticker, start_date, end_date, time_interval_selected)
             if len(data) != 0:
-                st.write(data.tail(4))
+                st.write(data.tail(3))
                 t = list(data.tail(3))
                 if t[2] > t[1]:
                     st.subheader("True")
